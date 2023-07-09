@@ -1,7 +1,10 @@
 package kubetest
 
 import (
+	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,6 +18,10 @@ type KubeT testing.T
 var (
 	clientset *kubernetes.Clientset
 )
+
+func AsKubeT(t *testing.T) *KubeT {
+	return (*KubeT)(t)
+}
 
 // purely for my peace of mind...
 func getExpectedContext() string {
@@ -31,14 +38,6 @@ func (t *KubeT) GetClientset() *kubernetes.Clientset {
 		return clientset
 	}
 
-	value := os.Getenv("ENV_VARIABLE_NAME")
-
-	// Check if the environment variable is empty or missing
-	if value == "" {
-		// Set a default value
-		value = "default value"
-	}
-
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(fmt.Errorf("failed to get home directory: %v", err))
@@ -49,7 +48,7 @@ func (t *KubeT) GetClientset() *kubernetes.Clientset {
 	configLoader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
 		&clientcmd.ConfigOverrides{
-			CurrentContext: "",
+			CurrentContext: "", //TODO: decide if to switch context here... or if KUBETEST_KUBECONFIG_CONTEXT is just for safety
 		})
 
 	rawConfig, err := configLoader.RawConfig()
@@ -76,7 +75,22 @@ func (t *KubeT) GetClientset() *kubernetes.Clientset {
 	return clientset
 }
 
-func (t *KubeT) Deploy(deployment string) {
+func (t *KubeT) WithNamespace(namespace *corev1.Namespace) corev1.Namespace {
+	clientset = t.GetClientset()
 
-	//t.C
+	result, err := clientset.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
+	if err != nil {
+		t.Errorf("Failed to create namespace: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := clientset.CoreV1().Namespaces().Delete(context.TODO(), result.Name, metav1.DeleteOptions{})
+		if err != nil {
+			// TODO: it's ok if it is already deleted though?
+			t.Errorf("Failed to delete namespace in cleanup: %s", err.Error())
+		}
+	})
+
+	// Update created namespace object
+	return *result
 }
