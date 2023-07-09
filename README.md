@@ -1,4 +1,4 @@
-# kind-test
+# kubetest
 
 Helper package to run kubernetes e2e tests using go testing package.
 
