@@ -19,8 +19,6 @@ import (
 func (t *KubeT) ApplyManifests(manifestFiles []string) error {
 	dynamicClient = t.GetDynamicClientset()
 
-	println(manifestFiles)
-
 	for _, pattern := range manifestFiles {
 		files, err := filepath.Glob(pattern)
 		if err != nil {

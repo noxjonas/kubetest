@@ -22,5 +22,10 @@ func TestMultipleManifests(t *testing.T) {
 		t.Errorf("failed to create deployment: %v", err)
 	}
 
+	_, err = clientset.CoreV1().Pods("default").Get(context.TODO(), "busybox-pod", metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("failed to create pod: %v", err)
+	}
+
 	// TODO: will fail second time around without cleanup
 }
