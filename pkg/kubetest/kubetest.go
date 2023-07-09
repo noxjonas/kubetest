@@ -5,6 +5,7 @@ import (
 	"fmt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,7 +17,8 @@ import (
 type KubeT testing.T
 
 var (
-	clientset *kubernetes.Clientset
+	clientset     *kubernetes.Clientset
+	dynamicClient *dynamic.DynamicClient
 )
 
 func AsKubeT(t *testing.T) *KubeT {
@@ -68,11 +70,24 @@ func (t *KubeT) GetClientset() *kubernetes.Clientset {
 			panic(fmt.Errorf("failed to create Kubernetes clientset: %v", err))
 		}
 
+		dynamicClient, err = dynamic.NewForConfig(restConfig)
+		if err != nil {
+			panic(fmt.Errorf("failed to create dynamic client: %v", err))
+		}
+
 	} else {
 		panic(fmt.Errorf("selected context is not '%s'", expectedContext))
 	}
 
 	return clientset
+}
+
+func (t *KubeT) GetDynamicClientset() *dynamic.DynamicClient {
+	if dynamicClient != nil {
+		return dynamicClient
+	}
+	t.GetClientset()
+	return dynamicClient
 }
 
 func (t *KubeT) WithNamespace(namespace *corev1.Namespace) corev1.Namespace {
@@ -91,6 +106,5 @@ func (t *KubeT) WithNamespace(namespace *corev1.Namespace) corev1.Namespace {
 		}
 	})
 
-	// Update created namespace object
 	return *result
 }
